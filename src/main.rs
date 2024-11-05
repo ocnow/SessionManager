@@ -1,8 +1,11 @@
+mod handleSessionDB;
+
+use handleSessionDB::get_list_of_skills;
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     layout::{Constraint, Layout, Position, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{palette::material::YELLOW, Color, Modifier, Style, Styled, Stylize},
     symbols::border,
     text::{Line, Span, Text},
     widgets::{block::Block, List, ListItem, Paragraph},
@@ -158,7 +161,10 @@ impl App {
             .iter()
             .enumerate()
             .map(|(i, m)| {
-                let content = Line::from(Span::raw(format!("{i}: {m}")));
+                let mut content = Line::from(Span::raw(format!("{i}: {m}")));
+                if i == 0 {
+                    content = content.bg(Color::LightRed);
+                }
                 ListItem::new(content)
             })
             .collect();
@@ -213,6 +219,11 @@ mod tests {
     use ratatui::style::Style;
 
     #[test]
+    fn check_read_json_file() {
+        let list_of_test_names: Vec<String> = get_list_of_skills("resources/sessionDBTest.json");
+        assert_eq!(list_of_test_names, vec!["json"]);
+    }
+    #[test]
     fn render() {}
 
     #[test]
@@ -225,5 +236,6 @@ fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
     let app_result = App::new().run(&mut terminal);
     ratatui::restore();
+
     app_result
 }
