@@ -1,6 +1,1 @@
-[
-  {
-    "name" : "json",
-    "total_time_spent" : 1234
-  }
-]
+[{"name":"json","total_time_spent":1234},{"name":"bevy","total_time_spent":0}]

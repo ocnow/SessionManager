@@ -1,5 +1,6 @@
 mod handleSessionDB;
 
+use fuzzy_matcher::skim::SkimMatcherV2;
 use handleSessionDB::get_list_of_skills;
 use ratatui::{
     buffer::Buffer,
@@ -215,13 +216,36 @@ impl App {
 
 #[cfg(test)]
 mod tests {
+    const TEST_DB_FILE_NAME: &str = "resources/sessionDBTest.json";
+    use std::{ascii::AsciiExt, fs::File};
+
     use super::*;
-    use ratatui::style::Style;
+    use handleSessionDB::{add_skill, SkillEntry};
+    use io::BufReader;
 
     #[test]
     fn check_read_json_file() {
-        let list_of_test_names: Vec<String> = get_list_of_skills("resources/sessionDBTest.json");
-        assert_eq!(list_of_test_names, vec!["json"]);
+        let list_of_test_names: Vec<String> = get_list_of_skills(TEST_DB_FILE_NAME);
+        assert!(list_of_test_names.contains(&"json".to_string()));
+    }
+
+    #[test]
+    fn check_add_skill_function() {
+        let skill_to_add = "bevy";
+        let res = add_skill(TEST_DB_FILE_NAME, skill_to_add);
+
+        res.unwrap_or_else(|e| {
+            eprintln!("Error : {}", e);
+        });
+
+        let file = File::open(TEST_DB_FILE_NAME).unwrap();
+        let reader = BufReader::new(file);
+
+        let data: Vec<SkillEntry> = serde_json::from_reader(reader).unwrap();
+
+        assert!(data
+            .into_iter()
+            .any(|x| x.name.eq_ignore_ascii_case(skill_to_add)));
     }
     #[test]
     fn render() {}
@@ -234,8 +258,12 @@ mod tests {
 
 fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
-    let app_result = App::new().run(&mut terminal);
+    // let app_result = App::new().run(&mut terminal);
     ratatui::restore();
 
-    app_result
+    let skimMatcher = SkimMatcherV2::default();
+
+    println!("{}", skimMatcher.asd);
+    Ok(())
+    // app_result
 }
