@@ -8,7 +8,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-const JSON_DB_FILE_PATH: &str = "resources/sessionDB.json";
+pub const JSON_DB_FILE_PATH: &str = "resources/sessionDB.json";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SkillEntry {
@@ -21,8 +21,6 @@ fn vector_contain_ignore_case(vec: Vec<String>, target: &str) -> bool {
         .any(|s| s.to_lowercase().eq_ignore_ascii_case(target))
 }
 
-fn fuzzy_match_test() {}
-
 pub fn get_list_of_skills(JSON_DB_FILE_NAME: &str) -> Vec<String> {
     let mut dbFile = File::open(JSON_DB_FILE_NAME).unwrap();
     let mut data = String::new();
@@ -30,9 +28,9 @@ pub fn get_list_of_skills(JSON_DB_FILE_NAME: &str) -> Vec<String> {
     let mut skillEntrySet: Vec<SkillEntry> = Vec::new();
     if (!data.trim().is_empty()) {
         skillEntrySet = serde_json::from_str(&data).unwrap();
-        println!("SkillSet we got size : {}", skillEntrySet.len());
+        // println!("SkillSet we got size : {}", skillEntrySet.len());
     } else {
-        println!("got the empty string");
+        // println!("got the empty string");
     }
 
     return skillEntrySet.into_iter().map(|x| x.name).collect();

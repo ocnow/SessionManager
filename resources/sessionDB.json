@@ -1,6 +1,1 @@
-[
-  {
-    "name" : "testasd",
-    "total_time_spent" : 123
-  }
-]
+[{"name":"bevy engine","total_time_spent":123},{"name":"json","total_time_spent":1234},{"name":"java","total_time_spent":0},{"name":"javascript","total_time_spent":0},{"name":"rust","total_time_spent":0}]

@@ -1,7 +1,7 @@
 mod handleSessionDB;
+mod util;
 
-use fuzzy_matcher::skim::SkimMatcherV2;
-use handleSessionDB::get_list_of_skills;
+use handleSessionDB::{add_skill, get_list_of_skills, JSON_DB_FILE_PATH};
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
@@ -13,6 +13,13 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use std::{char, io};
+use util::searchInVector;
+
+//TODO : Create seperate mods for different Tabs
+enum Tab {
+    Home,
+    Timer,
+}
 
 enum InputMode {
     Normal,
@@ -20,19 +27,21 @@ enum InputMode {
 }
 
 pub struct App {
-    input: String,
+    input_skill: String,
     character_index: usize,
     input_mode: InputMode,
-    messages: Vec<String>,
+    total_skills: Vec<String>,
+    skills: Vec<String>,
     exit: bool,
 }
 
 impl App {
     const fn new() -> Self {
         Self {
-            input: String::new(),
+            input_skill: String::new(),
             input_mode: InputMode::Normal,
-            messages: Vec::new(),
+            total_skills: Vec::new(),
+            skills: Vec::new(),
             character_index: 0,
             exit: false,
         }
@@ -50,16 +59,18 @@ impl App {
 
     fn enter_char(&mut self, new_char: char) {
         let index = self.byte_index();
-        self.input.insert(index, new_char);
+        self.input_skill.insert(index, new_char);
         self.move_cursor_right();
+        //TODO : Search and update the result vector
+        self.skills = searchInVector(&self.skills, &self.input_skill);
     }
 
     fn byte_index(&self) -> usize {
-        self.input
+        self.input_skill
             .char_indices()
             .map(|(i, _)| i)
             .nth(self.character_index)
-            .unwrap_or(self.input.len())
+            .unwrap_or(self.input_skill.len())
     }
     fn delete_char(&mut self) {
         let is_not_cursor_leftmost = self.character_index != 0;
@@ -69,18 +80,20 @@ impl App {
 
             // do this cause - delete can happen at any index
             // getting all the character before the character deleted.
-            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
+            let before_char_to_delete = self.input_skill.chars().take(from_left_to_current_index);
             //getting all the character after the character deleted
-            let after_char_to_delete = self.input.chars().skip(current_index);
+            let after_char_to_delete = self.input_skill.chars().skip(current_index);
 
             //put the above 2 sets together
-            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
+            self.input_skill = before_char_to_delete.chain(after_char_to_delete).collect();
             self.move_cursor_left();
         }
+        //TODO: Search in the total skills set and update the result vector
+        self.skills = searchInVector(&self.total_skills, &self.input_skill);
     }
 
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.chars().count())
+        new_cursor_pos.clamp(0, self.input_skill.chars().count())
     }
 
     fn reset_cursor(&mut self) {
@@ -88,12 +101,25 @@ impl App {
     }
 
     fn submit_messages(&mut self) {
-        self.messages.push(self.input.clone());
-        self.input.clear();
-        self.reset_cursor();
+        //TODO : Check if the given skill already exists in json database
+        //if the search result skills is empty, then it means there is no match
+        if self.skills.len() == 0 {
+            let result = add_skill(JSON_DB_FILE_PATH, &self.input_skill.clone());
+            if result.is_ok() {
+                self.total_skills.push(self.input_skill.clone());
+                self.skills.push(self.input_skill.clone());
+            }
+        }
+        // self.input_skill.clear();
+        // self.reset_cursor();
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        //Add skills before starting the run loop
+        self.total_skills
+            .append(&mut get_list_of_skills(JSON_DB_FILE_PATH));
+        self.skills = self.total_skills.clone();
+        //TODO : If the Tab is Timer, run timer's draw method
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
@@ -101,7 +127,7 @@ impl App {
         Ok(())
     }
 
-    fn draw(&self, frame: &mut Frame) {
+    fn draw(&mut self, frame: &mut Frame) {
         let vertical = Layout::vertical([
             Constraint::Length(1),
             Constraint::Length(3),
@@ -138,7 +164,7 @@ impl App {
         let help_message = Paragraph::new(text);
         frame.render_widget(help_message, help_area);
 
-        let input = Paragraph::new(self.input.as_str())
+        let input = Paragraph::new(self.input_skill.as_str())
             .style(match self.input_mode {
                 InputMode::Normal => Style::default(),
                 InputMode::Editing => Style::default().fg(Color::Yellow),
@@ -158,10 +184,11 @@ impl App {
         }
 
         let messages: Vec<ListItem> = self
-            .messages
+            .skills
             .iter()
             .enumerate()
             .map(|(i, m)| {
+                // println!("skill is : {}", m);
                 let mut content = Line::from(Span::raw(format!("{i}: {m}")));
                 if i == 0 {
                     content = content.bg(Color::LightRed);
@@ -247,6 +274,7 @@ mod tests {
             .into_iter()
             .any(|x| x.name.eq_ignore_ascii_case(skill_to_add)));
     }
+
     #[test]
     fn render() {}
 
@@ -258,12 +286,7 @@ mod tests {
 
 fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
-    // let app_result = App::new().run(&mut terminal);
+    let app_result = App::new().run(&mut terminal);
     ratatui::restore();
-
-    let skimMatcher = SkimMatcherV2::default();
-
-    println!("{}", skimMatcher.asd);
-    Ok(())
-    // app_result
+    app_result
 }
